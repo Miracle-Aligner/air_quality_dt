@@ -1,0 +1,28 @@
+{
+    "@id": "dtmi:app:UserPhone;1",
+    "@type": "Interface",
+    "displayName": "User Phone",
+    "contents": [
+        {
+            "@type": "Command",
+            "name": "showNotification",
+            "displayName": "Show Notification to Users",
+            "commandType": "synchronous",
+            "request": {
+                "@type": "CommandPayload",
+                "name": "message",
+                "schema": "string",
+                "displayName": "Notification Message",
+                "description": "Notification message sent to city residents."
+            },
+            "response": {
+                "@type": "CommandPayload",
+                "name": "result",
+                "schema": "string",
+                "displayName": "Result",
+                "description": "Result of the notification command."
+            }
+        }
+    ],
+    "@context": "dtmi:dtdl:context;2"
+}

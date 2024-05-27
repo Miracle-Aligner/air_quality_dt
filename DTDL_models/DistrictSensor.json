@@ -1,0 +1,79 @@
+{
+    "@id": "dtmi:environment:DistrictSensor;1",
+    "@type": "Interface",
+    "displayName": "District's Sensor",
+    "extends": "dtmi:environment:Coordinates;1",
+    "contents": [
+        {
+            "@type": "Property",
+            "name": "name",
+            "schema": "string",
+            "displayName": "District Name",
+            "description": "The name of the district."
+        },
+        {
+            "@type": "Property",
+            "name": "datetime",
+            "schema": "string",
+            "displayName": "Date Time",
+            "description": "The date and time of the measurement."
+        },
+        {
+            "@type": "Property",
+            "name": "aqi",
+            "schema": "integer",
+            "displayName": "Air Quality Index",
+            "description": "Air Quality Index value."
+        },
+        {
+            "@type": "Property",
+            "name": "co",
+            "schema": "double",
+            "displayName": "Carbon Monoxide",
+            "description": "Concentration of carbon monoxide (CO) in µg/m3."
+        },
+        {
+            "@type": "Property",
+            "name": "no2",
+            "schema": "double",
+            "displayName": "Nitrogen Dioxide",
+            "description": "Concentration of nitrogen dioxide (NO2) in µg/m3."
+        },
+        {
+            "@type": "Property",
+            "name": "o3",
+            "schema": "double",
+            "displayName": "Ozone",
+            "description": "Concentration of ozone (O3) in µg/m3."
+        },
+        {
+            "@type": "Property",
+            "name": "pm10",
+            "schema": "double",
+            "displayName": "PM10",
+            "description": "Concentration of particulate matter < 10 µm in µg/m3."
+        },
+        {
+            "@type": "Property",
+            "name": "pm25",
+            "schema": "double",
+            "displayName": "PM2.5",
+            "description": "Concentration of particulate matter < 2.5 µm in µg/m3."
+        },
+        {
+            "@type": "Property",
+            "name": "so2",
+            "schema": "double",
+            "displayName": "Sulfur Dioxide",
+            "description": "Concentration of sulfur dioxide (SO2) in µg/m3."
+        },
+        {
+          "@type": "Relationship",
+          "name": "alertsApplication",
+          "target": "dtmi:kyiv:CityApp;1",
+          "displayName": "Alerts City App Server",
+          "description": "The city application that receives alerts from this sensor."
+        }
+    ],
+    "@context": "dtmi:dtdl:context;2"
+}

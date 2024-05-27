@@ -1,0 +1,22 @@
+{
+  "@id": "dtmi:environment:Coordinates;1",
+  "@type": "Interface",
+  "displayName": "Geographic Coordinates",
+  "contents": [
+    {
+      "@type": "Property",
+      "name": "latitude",
+      "schema": "double",
+      "displayName": "Latitude",
+      "description": "The latitude of the location."
+    },
+    {
+      "@type": "Property",
+      "name": "longitude",
+      "schema": "double",
+      "displayName": "Longitude",
+      "description": "The longitude of the location."
+    }
+  ],
+  "@context": "dtmi:dtdl:context;2"
+}

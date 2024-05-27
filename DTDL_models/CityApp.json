@@ -1,0 +1,49 @@
+{
+    "@id": "dtmi:kyiv:CityApp;1",
+    "@type": "Interface",
+    "displayName": "City Application Server",
+    "contents": [
+        {
+            "@type": "Property",
+            "name": "lastNotification",
+            "schema": "string",
+            "displayName": "Last Notification",
+            "description": "Details of the last notification sent."
+        },
+        {
+            "@type": "Property",
+            "name": "alertLevel",
+            "schema": "integer",
+            "displayName": "Current Alert Level",
+            "description": "Current level of alert as determined by the number of critical notifications."
+        },
+        {
+            "@type": "Command",
+            "name": "sendNotification",
+            "displayName": "Send Notification to Users",
+            "commandType": "synchronous",
+            "request": {
+                "@type": "CommandPayload",
+                "name": "message",
+                "schema": "string",
+                "displayName": "Notification Message",
+                "description": "Notification message to be sent to city residents."
+            },
+            "response": {
+                "@type": "CommandPayload",
+                "name": "result",
+                "schema": "string",
+                "displayName": "Result",
+                "description": "Result of the notification command."
+            }
+        },
+        {
+          "@type": "Relationship",
+          "name": "alertsUser",
+          "target": "dtmi:app:UserPhone;1",
+          "displayName": "Alerts user",
+          "description": "Alert sent by server."
+        }
+    ],
+    "@context": "dtmi:dtdl:context;2"
+}

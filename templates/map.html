@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Azure Digital Twins Map Visualization</title>
+		<script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/2/atlas.min.js"></script>
+		<link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/2/atlas.min.css" type="text/css">
+		<style>
+			.popup-content-container {padding: 30px}
+			.out-of-norm{color: red;
+    font-weight: 700;}
+		</style>
+		<script>
+			function loadMapScenario() {
+
+			    var map = new atlas.Map('myMap', {
+			        center: [30.5234, 50.4501],
+			        zoom: 12,
+			        view: 'Auto',
+			        authOptions: {
+			            authType: 'subscriptionKey',
+			            subscriptionKey: 'GG30Jy6eepbUeXlbygapAtrjtoLNVe20CEHMthxYbPunHZZvPU1dJQQJ99AEACYeBjFfYlZ9AAAgAZMPyBMA'
+			        },
+			        language: "uk"
+			    });
+
+				function filterData(dataArray) {
+
+					const keysToKeep = ['aqi', 'co', 'datetime', 'no2', 'o3', 'pm10', 'pm25', 'so2'];
+					return dataArray.map(item => {
+						return keysToKeep.reduce((acc, key) => {
+							if (item.hasOwnProperty(key)) {
+								acc[key] = item[key];
+							}
+
+							return acc;
+						}, {});
+					});
+				}
+
+				function createHtmlStringWithNorms(dataObject) {
+    				let htmlString = "";
+					// Define the normal threshold values for each key
+					const thresholds = {
+						aqi: 100,
+						co: 9,  // in mg/m³ for 8-hour exposure
+						no2: 106, // in µg/m³ for 1-hour exposure
+						o3: 100, // in µg/m³ for 8-hour exposure
+						pm10: 150, // in µg/m³ for 24-hour exposure
+						pm25: 35, // in µg/m³ for 24-hour exposure
+						so2: 75 // in µg/m³ for 1-hour exposure
+					}
+
+					const keysToInclude = ["aqi", "co", "no2", "o3", "pm10", "pm25", "so2"];
+
+					keysToInclude.forEach(key => {
+						if(dataObject.hasOwnProperty(key)) {
+							// Determine whether the value is out of norm (if applicable)
+							let outOfNormClass = "";
+
+							if (thresholds[key] !== "" && dataObject[key] > thresholds[key]) {
+								outOfNormClass = "out-of-norm";
+							}
+							htmlString += `<div class="${outOfNormClass}"><i>${key}:</i> ${dataObject[key]}</div>\n`;
+						}
+					});
+
+					return htmlString;
+				}
+
+
+
+			    map.events.add('ready', function () {
+			        // Fetch the Digital Twins
+			        fetch('/api/sensors').then(response => response.json()).then(data => {
+			            data.forEach(twin => {
+			                var pin = new atlas.HtmlMarker({
+			                    color: 'DodgerBlue',
+			                    position: [twin.longitude, twin.latitude],
+			                    popup: new atlas.Popup({
+			                        content: `<div><strong>${twin.name}</strong></div>\n` + createHtmlStringWithNorms(twin),
+			                        pixelOffset: [0, -30]
+			                    })
+			                });
+
+			                map.markers.add(pin);
+			                map.events.add('click', pin, () => pin.togglePopup());
+			            });
+
+			        });
+
+			    });
+
+			}
+
+		</script>
+	</head>
+	<body onload="loadMapScenario();">
+		<div id="myMap" style="width: 100%; height: 800px;"></div>
+	</body>
+</html>
