@@ -4,10 +4,42 @@
 		<title>Azure Digital Twins Map Visualization</title>
 		<script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/2/atlas.min.js"></script>
 		<link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/2/atlas.min.css" type="text/css">
+    	<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-moment/1.0.1/chartjs-adapter-moment.min.js"></script>
 		<style>
+			html, body {
+				margin: 0!important;
+			}
 			.popup-content-container {padding: 30px}
 			.out-of-norm{color: red;
-    font-weight: 700;}
+				font-weight: 700;}
+			 .grid-container {
+				display: grid; /* Enables grid layout */
+				grid-template-columns: 1fr 1fr; /* Defines two columns of equal width */
+				width: 100vw; /* Sets the width of the container to the full viewport width */
+				height: 100vh; /* Sets the height of the container to the full viewport height */
+			 }
+			 #mapDiv, #myChartContainer {
+				width: 100% ; /* Ensures each child fills its grid cell */
+				height: 100vh; /* Ensures each child fills its grid cell */
+				background-color: #2C302E;
+			 }
+			 #myChartContainer{
+			 	position: relative;
+			 	align-content: space-around;
+
+			 }
+			canvas {
+				 display: block;
+				 pointer-events: auto;
+				 background-color: #F8F9F7;
+			}
+
+			.show-graph {margin-bottom: 10px; font-size: 14px;}
+			.header {margin-bottom: 15px; font-size: 18px;}
+			.index {margin-bottom: 5px; font-size: 14px;}
+
 		</style>
 		<script>
 			function loadMapScenario() {
@@ -37,64 +69,146 @@
 					});
 				}
 
-				function createHtmlStringWithNorms(dataObject) {
-    				let htmlString = "";
-					// Define the normal threshold values for each key
+			    function createHtmlStringWithNorms(dataObject) {
+					let htmlString = "";
 					const thresholds = {
 						aqi: 100,
-						co: 9,  // in mg/m³ for 8-hour exposure
-						no2: 106, // in µg/m³ for 1-hour exposure
-						o3: 100, // in µg/m³ for 8-hour exposure
-						pm10: 150, // in µg/m³ for 24-hour exposure
-						pm25: 35, // in µg/m³ for 24-hour exposure
-						so2: 75 // in µg/m³ for 1-hour exposure
-					}
+						co: 50,
+						no2: 100,
+						o3: 120,
+						pm10: 154,
+						pm25: 100,
+						so2: 2
+					};
 
 					const keysToInclude = ["aqi", "co", "no2", "o3", "pm10", "pm25", "so2"];
-
 					keysToInclude.forEach(key => {
-						if(dataObject.hasOwnProperty(key)) {
-							// Determine whether the value is out of norm (if applicable)
-							let outOfNormClass = "";
-
-							if (thresholds[key] !== "" && dataObject[key] > thresholds[key]) {
-								outOfNormClass = "out-of-norm";
-							}
-							htmlString += `<div class="${outOfNormClass}"><i>${key}:</i> ${dataObject[key]}</div>\n`;
+						if (dataObject.hasOwnProperty(key)) {
+							let outOfNormClass = dataObject[key] > thresholds[key] ? "out-of-norm" : "";
+							htmlString += `<div class="${outOfNormClass} index"><i>${key}:</i> ${dataObject[key]}</div>\n`;
+							htmlString += `<button class="show-graph" onclick="fetchAndShowGraph('${dataObject.name}', '${key}')">Show ${key} graph</button>\n`;
 						}
 					});
-
+					htmlString += `<div><br><br></div><div><button onclick="downloadJSON('${dataObject.name}')">Download full JSON</button></div>\n`;
 					return htmlString;
 				}
 
 
+			map.events.add('ready', function() {
+				fetch('/api/sensors').then(response => response.json()).then(data => {
+					data.forEach(twin => {
+						var pin = new atlas.HtmlMarker({
+							color: 'DodgerBlue',
+							position: [twin.longitude, twin.latitude],
+							popup: new atlas.Popup({
+								content: `<div class="header"><strong>${twin.name}</strong></div>\n` + createHtmlStringWithNorms(twin),
+								pixelOffset: [0, -30]
+							})
+						});
+						map.markers.add(pin);
+						map.events.add('click', pin, () => pin.togglePopup());
+					});
+				});
+			});
+		}
 
-			    map.events.add('ready', function () {
-			        // Fetch the Digital Twins
-			        fetch('/api/sensors').then(response => response.json()).then(data => {
-			            data.forEach(twin => {
-			                var pin = new atlas.HtmlMarker({
-			                    color: 'DodgerBlue',
-			                    position: [twin.longitude, twin.latitude],
-			                    popup: new atlas.Popup({
-			                        content: `<div><strong>${twin.name}</strong></div>\n` + createHtmlStringWithNorms(twin),
-			                        pixelOffset: [0, -30]
-			                    })
-			                });
+			function fetchAndShowGraph(districtName, indexName) {
+				fetch(`/api/indices/${districtName}/${indexName}`).then(response => response.json()).then(data => {
+					generateGraph(data, indexName);
+				});
+			}
 
-			                map.markers.add(pin);
-			                map.events.add('click', pin, () => pin.togglePopup());
-			            });
+			let myChart = null;
 
-			        });
+			function generateGraph(data, indexName) {
+				const datetimes = data.map(item => item.datetime);
+				const indexValues = data.map(item => item[indexName]);
+				const ctx = document.getElementById('myChart').getContext('2d');
+				if (myChart) {
+					myChart.destroy(); // Destroy the existing chart instance if it exists
+				}
+				myChart = new Chart(ctx, {
+					type: 'line',
+					data: {
+						labels: datetimes,
+						datasets: [{
+							label: `${indexName.toUpperCase()} over Time`,
+							data: indexValues,
+							borderColor: 'rgb(75, 192, 192)',
+							tension: 0.1
+						}]
+					},
+					options: {
+						responsive: true,
+						maintainAspectRatio: true,
+						tooltips: {
+							enabled: true,
+							mode: 'index',
+							intersect: false
+						},
+						hover: {
+							mode: 'nearest',
+							intersect: true
+						},
+						scales: {
+							x: {
+								type: 'time',
+								time: {
+									parser: 'YYYY-MM-DD:HH',
+									tooltipFormat: 'lll',
+									unit: 'hour',
+									displayFormats: {
+										hour: 'MMM D, YYYY hA'
+									}
+								},
+								title: {
+									display: true,
+									text: 'Datetime'
+								}
+							},
+							y: {
+								beginAtZero: true,
+								title: {
+									display: true,
+									text: indexName.toUpperCase()
+								}
+							}
+						}
+					}
+				});
+			}
 
-			    });
-
+			function downloadJSON(districtName) {
+				// Fetch data from the server
+				fetch(`/api/indices/${districtName}`).then(response => {
+					if (!response.ok) {
+						throw new Error('Network response was not ok');
+					}
+					return response.json();
+				}).then(data => {
+					// Create a 'href' link for downloading
+					const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data));
+					const downloadAnchorNode = document.createElement('a');
+					downloadAnchorNode.setAttribute('href', dataStr);
+					downloadAnchorNode.setAttribute('download', `${districtName}.json`);
+					document.body.appendChild(downloadAnchorNode); // Required for Firefox
+					downloadAnchorNode.click();
+					downloadAnchorNode.remove();
+				}).catch(error => {
+					console.error('There was an error fetching the data:', error);
+				});
 			}
 
 		</script>
 	</head>
 	<body onload="loadMapScenario();">
-		<div id="myMap" style="width: 100%; height: 800px;"></div>
+		<div class="grid-container">
+			<div id="mapDiv" style="width: 100%; height: 100vh;">
+				<div id="myMap" style="width: 100%; height: 100%;"></div>
+			</div>
+			<div id="myChartContainer" style="width: 100%; height: 100vh;">
+				<canvas id="myChart"></canvas>
+			</div>
+		</div>
 	</body>
 </html>

@@ -8,12 +8,13 @@ import requests
 from dotenv import load_dotenv
 from azure.digitaltwins.core import DigitalTwinsClient
 from azure.identity import DefaultAzureCredential
+from database import AirQualityManager
 
 app = func.FunctionApp()
 
 
 @app.schedule(
-    schedule="0 */5 * * * *", arg_name="myTimer", run_on_startup=True, use_monitor=False
+    schedule="*/10 * * * * *", arg_name="myTimer", run_on_startup=True, use_monitor=False
 )
 def updateAirData(myTimer: func.TimerRequest) -> None:
     # if myTimer.past_due:
@@ -30,11 +31,22 @@ def updateAirData(myTimer: func.TimerRequest) -> None:
 
         twins_data = [twin for twin in query_result if "name" in twin]
         for twin in twins_data:
-            # api_response = get_air_quality(
-            #     twin.get("latitude"), twin.get("longitude")
-            # )["data"][-1]
+            api_response = get_air_quality(
+                twin.get("latitude"), twin.get("longitude")
+            )["data"][0]
 
-            api_response = get_dummy_air_quality()["data"][-1]
+            # api_response = get_dummy_air_quality()["data"][0]
+
+            # adding fetched data to db
+            # full_api_response = get_air_quality(twin.get("latitude"), twin.get("longitude"))["data"][:2]
+            load_dotenv()
+            mongo_uri = os.getenv("MONGO_URI")
+            db_manager = AirQualityManager(mongo_uri)
+            # for entity in full_api_response:
+            #     db_manager.create_or_update_record(twin.get("name"), entity)
+            #
+            # api_response = full_api_response[0]
+            db_manager.create_or_update_record(twin.get("name"), api_response)
 
             json_patch_document = [
                 {
@@ -95,6 +107,16 @@ def updateAirData(myTimer: func.TimerRequest) -> None:
                     },
                 ]
                 adt_client.update_digital_twin("CityApplicationServer", updated_server)
+            else:
+                server = adt_client.get_digital_twin("CityApplicationServer")
+                updated_server = [
+                    {
+                        "op": "replace" if "alertLevel" in server else "add",
+                        "path": "/alertLevel",
+                        "value": 1,
+                    },
+                ]
+                adt_client.update_digital_twin("CityApplicationServer", updated_server)
 
     except Exception as e:
         logging.error(f"Failed to fetch or update data: {str(e)}")
@@ -102,13 +124,13 @@ def updateAirData(myTimer: func.TimerRequest) -> None:
 
 def is_air_polluted(factors):
     thresholds = {
-        "aqi": 100,  # Air Quality Index normal threshold
-        "co": 9,  # Carbon monoxide in mg/m³ for 8-hour exposure
-        "no2": 106,  # Nitrogen dioxide in µg/m³ for 1-hour exposure
-        "o3": 100,  # Ozone in µg/m³ for 8-hour exposure
-        "pm10": 150,  # Particulate matter <= 10 µm in µg/m³ for 24-hour exposure
-        "pm25": 35,  # Particulate matter <= 2.5 µm in µg/m³ for 24-hour exposure
-        "so2": 75,  # Sulfur dioxide in µg/m³ for 1-hour exposure
+        "aqi": 100,
+        "co": 50,
+        "no2": 100,
+        "o3": 120,
+        "pm10": 154,
+        "pm25": 100,
+        "so2": 2
     }
 
     # Iterate through the keys that need to be checked
@@ -149,11 +171,11 @@ def get_dummy_air_quality():
                 ),  # AQI could realistically be between 0 and 300
                 "co": random.uniform(0, 10),  # CO level in µg/m³
                 "datetime": formatted_datetime,  # Current date and hour
-                "no2": random.uniform(5, 150),  # NO2 level in µg/m³
-                "o3": random.uniform(10, 120),  # O3 level in µg/m³
-                "pm10": random.uniform(0, 200),  # PM10 particulates level in µg/m³
-                "pm25": random.uniform(0, 50),  # PM2.5 particulates level in µg/m³
-                "so2": random.uniform(0, 75),  # SO2 level in µg/m³
+                "no2": random.uniform(5, 100),  # NO2 level in µg/m³
+                "o3": random.uniform(10, 150),  # O3 level in µg/m³
+                "pm10": random.uniform(0, 150),  # PM10 particulates level in µg/m³
+                "pm25": random.uniform(0, 100),  # PM2.5 particulates level in µg/m³
+                "so2": random.uniform(0, 3),  # SO2 level in µg/m³
             }
         ]
     }

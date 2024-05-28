@@ -4,6 +4,7 @@ from azure.digitaltwins.core import DigitalTwinsClient
 from dotenv import load_dotenv
 import os
 import logging
+from database import AirQualityManager
 
 load_dotenv()
 
@@ -14,13 +15,9 @@ adt_url = os.getenv("AZURE_DIGITAL_TWINS_URL")
 credential = DefaultAzureCredential()
 
 adt_client = DigitalTwinsClient(adt_url, credential)
-# Mock data - In a real scenario, you would fetch this data from Azure Digital Twins
 
-twins_data = [
-    {"name": "Location A", "latitude": 50.4501, "longitude": 30.5234},
-    {"name": "Location B", "latitude": 50.4547, "longitude": 30.5238},
-]
-
+mongo_uri = os.getenv("MONGO_URI")
+db_manager = AirQualityManager(mongo_uri)
 
 @app.route("/")
 def home():
@@ -33,7 +30,6 @@ def get_twins():
         query_expression = "SELECT * FROM digitaltwins"
         query_result = adt_client.query_twins(query_expression)
         twins_data = [twin for twin in query_result]
-        print(twins_data)
 
         return jsonify(twins_data)
 
@@ -47,12 +43,18 @@ def get_sensors():
         query_result = adt_client.query_twins(query_expression)
         twins_data = [twin for twin in query_result if "name" in twin]
 
-        print(twins_data)
         return jsonify(twins_data)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/indices/<string:district_name>")
+def get_indices(district_name):
+    return db_manager.get_all_indices_for_name(district_name)
+
+@app.route("/api/indices/<string:district_name>/<string:index_name>")
+def get_indice_for_district(district_name, index_name):
+    return db_manager.read_data(district_name, index_name)
 
 if __name__ == "__main__":
     app.run(debug=True)

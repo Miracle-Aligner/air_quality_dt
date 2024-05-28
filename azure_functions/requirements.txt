@@ -8,3 +8,4 @@ azure-mgmt-digitaltwins==6.4.0
 azure-mgmt-resource==22.0.0
 azure-functions==1.19.0
 python-dotenv==1.0.1
+pymongo==4.5.0
