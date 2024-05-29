@@ -145,4 +145,5 @@ Description: This screenshot demonstrates the air quality map rendered from `map
 
 ## Final Presentation
 
-For a comprehensive overview, including the scope of work, please see our [final project presentation](https://docs.google.com/presentation/d/1nRTD9RVssoOtlGSgyX_Dwp-qhCw_sd8cUWrZeDK_aGY/edit?usp=sharing).
+For a comprehensive overview, including the scope of work, please see [final project presentation](https://docs.google.com/presentation/d/1nRTD9RVssoOtlGSgyX_Dwp-qhCw_sd8cUWrZeDK_aGY/edit?usp=sharing).
+All accompanying documents, such as the technical task, the report and the report presentation can be found in [docs](docs).

@@ -17,8 +17,12 @@ app = func.FunctionApp()
     schedule="*/10 * * * * *", arg_name="myTimer", run_on_startup=True, use_monitor=False
 )
 def updateAirData(myTimer: func.TimerRequest) -> None:
-    # if myTimer.past_due:
+    IS_TESTING = True
+    # IS_TESTING = False
+    ENTITIES_TO_SAVE = 1
+
     try:
+
         load_dotenv()
 
         adt_url = os.getenv("AZURE_DIGITAL_TWINS_URL")
@@ -26,27 +30,33 @@ def updateAirData(myTimer: func.TimerRequest) -> None:
 
         adt_client = DigitalTwinsClient(adt_url, credential)
 
+        # reset notify
+        server = adt_client.get_digital_twin("CityApplicationServer")
+        updated_server = [
+            {
+                "op": "replace" if "alertLevel" in server else "add",
+                "path": "/alertLevel",
+                "value": 1,
+            },
+        ]
+        adt_client.update_digital_twin("CityApplicationServer", updated_server)
+
         query_expression = "SELECT * FROM digitaltwins"
         query_result = adt_client.query_twins(query_expression)
 
         twins_data = [twin for twin in query_result if "name" in twin]
         for twin in twins_data:
-            api_response = get_air_quality(
-                twin.get("latitude"), twin.get("longitude")
-            )["data"][0]
+            if IS_TESTING:
+                api_response = get_dummy_air_quality()["data"][0]
+            else:
+                full_api_response = get_air_quality(twin.get("latitude"), twin.get("longitude"))["data"][:ENTITIES_TO_SAVE]
+                load_dotenv()
+                mongo_uri = os.getenv("MONGO_URI")
+                db_manager = AirQualityManager(mongo_uri)
+                for entity in full_api_response:
+                    db_manager.create_or_update_record(twin.get("name"), entity)
 
-            # api_response = get_dummy_air_quality()["data"][0]
-
-            # adding fetched data to db
-            # full_api_response = get_air_quality(twin.get("latitude"), twin.get("longitude"))["data"][:2]
-            load_dotenv()
-            mongo_uri = os.getenv("MONGO_URI")
-            db_manager = AirQualityManager(mongo_uri)
-            # for entity in full_api_response:
-            #     db_manager.create_or_update_record(twin.get("name"), entity)
-            #
-            # api_response = full_api_response[0]
-            db_manager.create_or_update_record(twin.get("name"), api_response)
+                api_response = full_api_response[0]
 
             json_patch_document = [
                 {
@@ -103,7 +113,7 @@ def updateAirData(myTimer: func.TimerRequest) -> None:
                     {
                         "op": "replace" if "lastNotification" in server else "add",
                         "path": "/lastNotification",
-                        "value": f"The air of {twin.get('name')} is polluted.",
+                        "value": f"The air of {twin.get('name')} is polluted. Close the windows.",
                     },
                 ]
                 adt_client.update_digital_twin("CityApplicationServer", updated_server)
